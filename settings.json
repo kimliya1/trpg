@@ -1,18 +1,18 @@
 {
-  "prefixNum": "01",
-  "expressionName": "smile",
+  "prefixNum": "00",
+  "expressionName": "기본",
   "savedPresets": [
     {
-      "id": "preset_1788882309605",
-      "number": "01",
-      "expressionName": "smile",
+      "id": "preset_1788882723884",
+      "number": "00",
+      "expressionName": "기본",
       "layers": {
         "blush": [
-          "blush_1788882304224"
+          "기본 볼터치"
         ],
-        "mouth": null,
-        "eyes": null,
-        "eyebrows": null,
+        "mouth": "기본 입",
+        "eyes": "기본 눈",
+        "eyebrows": "기본 눈썹",
         "deco": []
       }
     }
