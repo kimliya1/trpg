@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GitHub 연동 이미지 레이어 합성기</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f4f6f8; color: #333; padding: 20px; }
+    h1 { font-size: 1.5rem; margin-bottom: 20px; color: #2c3e50; }
+    .container { display: flex; gap: 20px; max-width: 1600px; margin: 0 auto; align-items: flex-start; }
+    .left-panel { flex: 1.2; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); }
+    .right-panel { flex: 1; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); position: sticky; top: 20px; max-height: calc(100vh - 40px); overflow-y: auto; }
+    
+    .section { margin-bottom: 20px; border-bottom: 1px solid #eee; padding-bottom: 15px; }
+    .section h3 { font-size: 1.05rem; margin-bottom: 10px; color: #34495e; display: flex; justify-content: space-between; align-items: center; }
+    .badge { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: #e0e0e0; font-weight: normal; }
+    
+    .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
+    .input-group input[type="text"], .input-group input[type="password"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
+    .file-input { margin-bottom: 10px; }
+    
+    .base-list, .layer-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
+    .item-card { border: 1px solid #ddd; padding: 6px; border-radius: 6px; width: 95px; text-align: center; position: relative; background: #fafafa; }
+    .item-card img { width: 100%; height: 65px; object-fit: contain; background: #eee; border-radius: 4px; display: block; margin-bottom: 4px; }
+    .item-card input[type="text"] { width: 100%; font-size: 0.75rem; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; }
+    .item-card label { font-size: 0.75rem; cursor: pointer; display: block; word-break: break-all; }
+    
+    .preview-box { text-align: center; margin-bottom: 15px; }
+    canvas { border: 1px solid #ccc; background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px; max-width: 100%; max-height: 280px; width: auto; height: auto; border-radius: 4px; }
+
+    .btn { background: #3498db; color: white; border: none; padding: 10px 16px; font-size: 0.95rem; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
+    .btn:hover { background: #2980b9; }
+    .btn-github { background: #2c3e50; }
+    .btn-github:hover { background: #1a252f; }
+    .btn-save { background: #2ecc71; margin-bottom: 15px; }
+    .btn-save:hover { background: #27ae60; }
+    .btn-download { background: #e67e22; font-size: 1.05rem; padding: 12px; }
+    .btn-download:hover { background: #d35400; }
+    .btn-sync { background: #8e44ad; }
+    .btn-sync:hover { background: #732d91; }
+
+    .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-top: 10px; max-height: 350px; overflow-y: auto; padding-right: 5px; }
+    .preset-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; background: #fff; position: relative; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .preset-thumb { width: 100%; height: 100px; object-fit: contain; background: #f0f0f0; border-radius: 4px; margin-bottom: 6px; border: 1px solid #eee; }
+    .preset-title { font-size: 0.8rem; font-weight: bold; color: #2c3e50; word-break: break-all; }
+    .btn-del { position: absolute; top: 4px; right: 4px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; cursor: pointer; line-height: 20px; text-align: center; }
+    .empty-msg { font-size: 0.85rem; color: #999; text-align: center; padding: 20px 0; }
+    .status-log { font-size: 0.8rem; color: #27ae60; font-weight: bold; margin-top: 5px; }
+  </style>
+</head>
+<body>
+
+  <h1>GitHub 연동 이미지 레이어 합성기</h1>
+
+  <div class="container">
+    <div class="left-panel">
+      
+      <!-- 0. GitHub 저장소 설정 -->
+      <div class="section" style="background: #f8f9fa; padding: 12px; border-radius: 6px;">
+        <h3>0. GitHub 저장소 연동 설정</h3>
+        <div class="input-group">
+          <input type="text" id="ghOwner" placeholder="GitHub 계정명 (Owner)">
+          <input type="text" id="ghRepo" placeholder="저장소 이름 (Repo)">
+        </div>
+        <div class="input-group">
+          <input type="text" id="ghBranch" placeholder="브랜치 (기본: main)" value="main">
+          <input type="password" id="ghToken" placeholder="GitHub Personal Access Token (PAT)">
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button id="connectGhBtn" class="btn btn-github">🔗 저장소 연결 및 데이터 불러오기</button>
+          <button id="saveSettingsBtn" class="btn btn-sync">💾 settings.json 저장소에 덮어쓰기</button>
+        </div>
+        <div id="statusLog" class="status-log"></div>
+      </div>
+
+      <!-- 1. 저장 이름 규칙 설정 -->
+      <div class="section">
+        <h3>1. 저장 이름 규칙 설정</h3>
+        <div class="input-group">
+          <input type="text" id="prefixNum" placeholder="숫자 (예: 01)" value="01">
+          <input type="text" id="expressionName" placeholder="표정이름 (예: smile)" value="smile">
+        </div>
+        <p style="font-size: 0.8rem; color: #666;">파일명 형태: [숫자]_[표정이름]_[베이스이름].png</p>
+      </div>
+
+      <!-- 2. 베이스 이미지 (베이스/) -->
+      <div class="section">
+        <h3>2. 베이스 이미지 (<code style="color:#e67e22;">베이스/</code> 폴더)</h3>
+        <input type="file" id="baseInput" multiple accept="image/*" class="file-input">
+        <div id="baseList" class="base-list"></div>
+      </div>
+
+      <!-- 3. 레이어 설정 (각 한글 폴더) -->
+      <div class="section">
+        <h3>3. 레이어 설정 (각 한글 폴더 자동 업로드)</h3>
+        
+        <div>
+          <h4>레이어 1: 볼터치 (<code style="color:#e67e22;">볼터치/</code>) <span class="badge">복수 선택</span></h4>
+          <input type="file" id="layerBlushInput" multiple accept="image/*" class="file-input">
+          <div id="layerBlushList" class="layer-list"></div>
+        </div>
+
+        <div style="margin-top: 15px;">
+          <h4>레이어 2: 입 (<code style="color:#e67e22;">입/</code>) <span class="badge">1개 선택</span></h4>
+          <input type="file" id="layerMouthInput" multiple accept="image/*" class="file-input">
+          <div id="layerMouthList" class="layer-list"></div>
+        </div>
+
+        <div style="margin-top: 15px;">
+          <h4>레이어 3: 눈 (<code style="color:#e67e22;">눈/</code>) <span class="badge">1개 선택</span></h4>
+          <input type="file" id="layerEyesInput" multiple accept="image/*" class="file-input">
+          <div id="layerEyesList" class="layer-list"></div>
+        </div>
+
+        <div style="margin-top: 15px;">
+          <h4>레이어 4: 눈썹 (<code style="color:#e67e22;">눈썹/</code>) <span class="badge">1개 선택</span></h4>
+          <input type="file" id="layerEyebrowsInput" multiple accept="image/*" class="file-input">
+          <div id="layerEyebrowsList" class="layer-list"></div>
+        </div>
+
+        <div style="margin-top: 15px;">
+          <h4>레이어 5: 장식 (<code style="color:#e67e22;">장식/</code>) <span class="badge">복수 선택</span></h4>
+          <input type="file" id="layerDecoInput" multiple accept="image/*" class="file-input">
+          <div id="layerDecoList" class="layer-list"></div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- 우측: 미리보기, 표정 저장 및 일괄 다운로드 -->
+    <div class="right-panel">
+      <div class="section">
+        <h3>실시간 미리보기</h3>
+        <div class="preview-box">
+          <canvas id="previewCanvas" width="400" height="400"></canvas>
+        </div>
+        <button id="savePresetBtn" class="btn btn-save">➕ 현재 선택된 레이어 설정 저장 (프리셋 추가)</button>
+      </div>
+
+      <div class="section">
+        <h3>저장된 표정 프리셋 목록 <span id="presetCount" class="badge">0개</span></h3>
+        <div id="presetGrid" class="preset-grid">
+          <div class="empty-msg">저장된 표정이 없습니다.<br>레이어를 선택 후 위 버튼을 눌러 저장하세요.</div>
+        </div>
+      </div>
+
+      <button id="downloadAllBtn" class="btn btn-download">📦 저장된 모든 표정 x 베이스 일괄 저장 (저장소 Commit + .zip)</button>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('previewCanvas');
+    const ctx = canvas.getContext('2d');
+
+    const FOLDER_MAP = {
+      base: '베이스',
+      blush: '볼터치',
+      mouth: '입',
+      eyes: '눈',
+      eyebrows: '눈썹',
+      deco: '장식',
+      output: '결과물'
+    };
+
+    const state = {
+      bases: [],
+      layers: { blush: [], mouth: [], eyes: [], eyebrows: [], deco: [] },
+      savedPresets: []
+    };
+
+    function log(msg) {
+      document.getElementById('statusLog').textContent = msg;
+    }
+
+    // localStorage에 GitHub 연동 정보 보존
+    ['ghOwner', 'ghRepo', 'ghBranch', 'ghToken'].forEach(id => {
+      const el = document.getElementById(id);
+      el.value = localStorage.getItem(id) || el.value;
+      el.addEventListener('input', () => localStorage.setItem(id, el.value));
+    });
+
+    function getGhConfig() {
+      return {
+        owner: document.getElementById('ghOwner').value.trim(),
+        repo: document.getElementById('ghRepo').value.trim(),
+        branch: document.getElementById('ghBranch').value.trim() || 'main',
+        token: document.getElementById('ghToken').value.trim()
+      };
+    }
+
+    // GitHub API Core: 파일 로드
+    async function fetchGhFile(path) {
+      const { owner, repo, branch, token } = getGhConfig();
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${branch}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    }
+
+    // GitHub API Core: 파일 업로드/덮어쓰기 (Commit)
+    async function uploadGhFile(path, base64Content, message) {
+      const { owner, repo, branch, token } = getGhConfig();
+      if (!token) throw new Error('GitHub Token이 필요합니다.');
+
+      const existing = await fetchGhFile(path);
+      const sha = existing ? existing.sha : undefined;
+
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          message,
+          content: base64Content.replace(/^data:image\/\w+;base64,/, ''),
+          branch,
+          sha
+        })
+      });
+
+      if (!res.ok) throw new Error(`업로드 실패 (${path}): ` + res.statusText);
+      return await res.json();
+    }
+
+    // 이미지 로드 및 크롭
+    function loadImageFromSrc(src) {
+      return new Promise((resolve) => {
+        const img = new Image();
+        img.crossOrigin = 'Anonymous';
+        img.onload = () => resolve(img);
+        img.src = src;
+      });
+    }
+
+    function cropImageToOpaque(img) {
+      return new Promise((resolve) => {
+        const tempCanvas = document.createElement('canvas');
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCanvas.width = img.naturalWidth || img.width;
+        tempCanvas.height = img.naturalHeight || img.height;
+        tempCtx.drawImage(img, 0, 0);
+
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
+        const data = imageData.data;
+        let minX = tempCanvas.width, minY = tempCanvas.height, maxX = -1, maxY = -1;
+
+        for (let y = 0; y < tempCanvas.height; y++) {
+          for (let x = 0; x < tempCanvas.width; x++) {
+            if (data[(y * tempCanvas.width + x) * 4 + 3] > 0) {
+              minX = Math.min(minX, x); minY = Math.min(minY, y);
+              maxX = Math.max(maxX, x); maxY = Math.max(maxY, y);
+            }
+          }
+        }
+
+        if (maxX < 0) return resolve({ img, cropX: 0, cropY: 0 });
+
+        const cropW = maxX - minX + 1, cropH = maxY - minY + 1;
+        const finalCanvas = document.createElement('canvas');
+        finalCanvas.width = cropW; finalCanvas.height = cropH;
+        finalCanvas.getContext('2d').drawImage(tempCanvas, minX, minY, cropW, cropH, 0, 0, cropW, cropH);
+
+        const croppedImg = new Image();
+        croppedImg.onload = () => resolve({ img: croppedImg, cropX: minX, cropY: minY });
+        croppedImg.src = finalCanvas.toDataURL();
+      });
+    }
+
+    // Canvas 합성
+    function drawLayersToCanvas(targetCanvas, targetCtx, baseImg, layerSelections) {
+      if (baseImg) {
+        targetCanvas.width = baseImg.naturalWidth || baseImg.width;
+        targetCanvas.height = baseImg.naturalHeight || baseImg.height;
+      }
+      targetCtx.clearRect(0, 0, targetCanvas.width, targetCanvas.height);
+
+      if (baseImg) targetCtx.drawImage(baseImg, 0, 0);
+
+      ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'].forEach(cat => {
+        const sel = layerSelections[cat];
+        if (Array.isArray(sel)) {
+          state.layers[cat].filter(l => sel.includes(l.id)).forEach(l => targetCtx.drawImage(l.img, l.cropX, l.cropY));
+        } else if (sel) {
+          const item = state.layers[cat].find(l => l.id === sel);
+          if (item) targetCtx.drawImage(item.img, item.cropX, item.cropY);
+        }
+      });
+    }
+
+    function renderPreview() {
+      const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
+      const currentSelections = {
+        blush: state.layers.blush.filter(l => l.selected).map(l => l.id),
+        mouth: state.layers.mouth.find(l => l.selected)?.id || null,
+        eyes: state.layers.eyes.find(l => l.selected)?.id || null,
+        eyebrows: state.layers.eyebrows.find(l => l.selected)?.id || null,
+        deco: state.layers.deco.filter(l => l.selected).map(l => l.id)
+      };
+      drawLayersToCanvas(canvas, ctx, activeBase, currentSelections);
+    }
+
+    // GitHub 연동: 저장소 폴더 데이터 불러오기
+    document.getElementById('connectGhBtn').addEventListener('click', async () => {
+      try {
+        log('저장소 연결 중...');
+        
+        // 1. settings.json 확인 및 로드
+        const settingsFile = await fetchGhFile('settings.json');
+        let importedSettings = null;
+        if (settingsFile && settingsFile.content) {
+          importedSettings = JSON.parse(decodeURIComponent(escape(atob(settingsFile.content))));
+          if (importedSettings.prefixNum) document.getElementById('prefixNum').value = importedSettings.prefixNum;
+          if (importedSettings.expressionName) document.getElementById('expressionName').value = importedSettings.expressionName;
+          state.savedPresets = importedSettings.savedPresets || [];
+        }
+
+        // 2. 베이스 폴더 읽기
+        const baseFiles = await fetchGhFile(FOLDER_MAP.base) || [];
+        state.bases = await Promise.all(baseFiles.filter(f => f.type === 'file').map(async (f, idx) => ({
+          id: 'base_' + idx,
+          baseName: f.name.split('.')[0],
+          img: await loadImageFromSrc(f.download_url)
+        })));
+        renderBaseList();
+
+        // 3. 각 레이어 폴더 읽기
+        const categories = ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'];
+        for (const cat of categories) {
+          const folderFiles = await fetchGhFile(FOLDER_MAP[cat]) || [];
+          state.layers[cat] = await Promise.all(folderFiles.filter(f => f.type === 'file').map(async (f, idx) => {
+            const rawImg = await loadImageFromSrc(f.download_url);
+            const { img, cropX, cropY } = await cropImageToOpaque(rawImg);
+            return {
+              id: `${cat}_${idx}`,
+              name: f.name.split('.')[0],
+              selected: false,
+              cropX, cropY, img
+            };
+          }));
+        }
+
+        renderAllLayerLists();
+        renderPresetList();
+        renderPreview();
+        log('성공적으로 저장소 데이터를 로드했습니다.');
+      } catch (err) {
+        console.error(err);
+        log('오류 발생: ' + err.message);
+      }
+    });
+
+    // settings.json 저장소 덮어쓰기
+    document.getElementById('saveSettingsBtn').addEventListener('click', async () => {
+      try {
+        log('settings.json 저장 중...');
+        const exportData = {
+          prefixNum: document.getElementById('prefixNum').value,
+          expressionName: document.getElementById('expressionName').value,
+          savedPresets: state.savedPresets
+        };
+        const jsonString = JSON.stringify(exportData, null, 2);
+        const base64 = btoa(unescape(encodeURIComponent(jsonString)));
+
+        await uploadGhFile('settings.json', base64, 'Update settings.json');
+        log('settings.json이 성공적으로 깃허브에 저장/덮어쓰기 되었습니다.');
+      } catch (err) {
+        log(' settings.json 저장 실패: ' + err.message);
+      }
+    });
+
+    // 로컬 파일 업로드 시 GitHub 폴더 자동 Commit
+    function setupLocalUploadWithGh(inputId, containerId, category, isMultiple) {
+      document.getElementById(inputId).addEventListener('change', async (e) => {
+        const files = Array.from(e.target.files);
+        for (const file of files) {
+          const reader = new FileReader();
+          reader.onload = async (evt) => {
+            const base64 = evt.target.result;
+            const folder = FOLDER_MAP[category];
+            const filePath = `${folder}/${file.name}`;
+            
+            try {
+              log(`${filePath} 깃허브 업로드 중...`);
+              await uploadGhFile(filePath, base64, `Add ${file.name} to ${folder}`);
+              
+              const loadedImg = await loadImageFromSrc(base64);
+              if (category === 'base') {
+                state.bases.push({ id: 'base_' + Date.now(), baseName: file.name.split('.')[0], img: loadedImg });
+                renderBaseList();
+              } else {
+                const { img, cropX, cropY } = await cropImageToOpaque(loadedImg);
+                state.layers[category].push({
+                  id: category + '_' + Date.now(),
+                  name: file.name.split('.')[0],
+                  selected: false,
+                  cropX, cropY, img
+                });
+                renderLayerList(containerId, category, isMultiple);
+              }
+              renderPreview();
+              log(`${file.name} 커밋 완료!`);
+            } catch (err) {
+              log('업로드 실패: ' + err.message);
+            }
+          };
+          reader.readAsDataURL(file);
+        }
+      });
+    }
+
+    setupLocalUploadWithGh('baseInput', 'baseList', 'base', true);
+    setupLocalUploadWithGh('layerBlushInput', 'layerBlushList', 'blush', true);
+    setupLocalUploadWithGh('layerMouthInput', 'layerMouthList', 'mouth', false);
+    setupLocalUploadWithGh('layerEyesInput', 'layerEyesList', 'eyes', false);
+    setupLocalUploadWithGh('layerEyebrowsInput', 'layerEyebrowsList', 'eyebrows', false);
+    setupLocalUploadWithGh('layerDecoInput', 'layerDecoList', 'deco', true);
+
+    function renderBaseList() {
+      const container = document.getElementById('baseList');
+      container.innerHTML = '';
+      state.bases.forEach((item, index) => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        card.innerHTML = `<img src="${item.img.src}"><input type="text" value="${item.baseName}">`;
+        card.querySelector('input').addEventListener('input', (e) => state.bases[index].baseName = e.target.value);
+        container.appendChild(card);
+      });
+    }
+
+    function renderLayerList(containerId, category, isMultiple) {
+      const container = document.getElementById(containerId);
+      container.innerHTML = '';
+      state.layers[category].forEach((item) => {
+        const card = document.createElement('div');
+        card.className = 'item-card';
+        const inputType = isMultiple ? 'checkbox' : 'radio';
+        const inputName = isMultiple ? item.id : category + '_group';
+
+        card.innerHTML = `
+          <img src="${item.img.src}">
+          <label><input type="${inputType}" name="${inputName}" ${item.selected ? 'checked' : ''}> ${item.name}</label>
+        `;
+
+        card.querySelector('input').addEventListener('change', (e) => {
+          if (isMultiple) item.selected = e.target.checked;
+          else {
+            state.layers[category].forEach(l => l.selected = false);
+            item.selected = e.target.checked;
+          }
+          renderPreview();
+        });
+        container.appendChild(card);
+      });
+    }
+
+    function renderAllLayerLists() {
+      renderLayerList('layerBlushList', 'blush', true);
+      renderLayerList('layerMouthList', 'mouth', false);
+      renderLayerList('layerEyesList', 'eyes', false);
+      renderLayerList('layerEyebrowsList', 'eyebrows', false);
+      renderLayerList('layerDecoList', 'deco', true);
+    }
+
+    // 프리셋 생성
+    document.getElementById('savePresetBtn').addEventListener('click', () => {
+      const num = document.getElementById('prefixNum').value.trim() || '01';
+      const exp = document.getElementById('expressionName').value.trim() || 'expression';
+
+      state.savedPresets.push({
+        id: 'preset_' + Date.now(),
+        number: num,
+        expressionName: exp,
+        layers: {
+          blush: state.layers.blush.filter(l => l.selected).map(l => l.id),
+          mouth: state.layers.mouth.find(l => l.selected)?.id || null,
+          eyes: state.layers.eyes.find(l => l.selected)?.id || null,
+          eyebrows: state.layers.eyebrows.find(l => l.selected)?.id || null,
+          deco: state.layers.deco.filter(l => l.selected).map(l => l.id)
+        }
+      });
+      renderPresetList();
+    });
+
+    function renderPresetList() {
+      const container = document.getElementById('presetGrid');
+      document.getElementById('presetCount').textContent = state.savedPresets.length + '개';
+      container.innerHTML = '';
+
+      if (state.savedPresets.length === 0) {
+        container.innerHTML = '<div class="empty-msg">저장된 표정이 없습니다.<br>레이어를 선택 후 위 버튼을 눌러 저장하세요.</div>';
+        return;
+      }
+
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
+
+      state.savedPresets.forEach((preset, idx) => {
+        drawLayersToCanvas(tempCanvas, tempCtx, activeBase, preset.layers);
+        const card = document.createElement('div');
+        card.className = 'preset-card';
+        card.innerHTML = `
+          <button class="btn-del">&times;</button>
+          <img class="preset-thumb" src="${tempCanvas.toDataURL()}">
+          <div class="preset-title">${preset.number}_${preset.expressionName}</div>
+        `;
+        card.querySelector('.btn-del').addEventListener('click', () => {
+          state.savedPresets.splice(idx, 1);
+          renderPresetList();
+        });
+        container.appendChild(card);
+      });
+    }
+
+    // 일괄 저장: GitHub '결과물/' 폴더 커밋 및 ZIP 동시 내려받기
+    document.getElementById('downloadAllBtn').addEventListener('click', async () => {
+      if (state.bases.length === 0 || state.savedPresets.length === 0) {
+        alert('베이스 및 저장된 표정 프리셋이 필요합니다.');
+        return;
+      }
+
+      const zip = new JSZip();
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+
+      log('일괄 이미지 합성 및 GitHub 커밋 진행 중...');
+
+      for (const preset of state.savedPresets) {
+        for (const base of state.bases) {
+          drawLayersToCanvas(tempCanvas, tempCtx, base.img, preset.layers);
+          
+          const fileName = `${preset.number}_${preset.expressionName}_${base.baseName}.png`;
+          const dataUrl = tempCanvas.toDataURL('image/png');
+          const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+
+          // 1. ZIP에 추가
+          zip.file(fileName, base64Data, { base64: true });
+
+          // 2. GitHub '결과물/' 폴더에 자동 커밋
+          try {
+            await uploadGhFile(`${FOLDER_MAP.output}/${fileName}`, base64Data, `Add generated image ${fileName}`);
+          } catch (err) {
+            console.error(err);
+          }
+        }
+      }
+
+      const content = await zip.generateAsync({ type: 'blob' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(content);
+      link.download = `expression_presets_all.zip`;
+      link.click();
+      URL.revokeObjectURL(link.href);
+
+      log('일괄 저장 및 깃허브 커밋이 완료되었습니다!');
+    });
+  </script>
+</body>
+</html>
