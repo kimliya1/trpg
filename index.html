@@ -42,10 +42,11 @@
     .btn-sync:hover { background: #732d91; }
 
     .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-top: 10px; max-height: 350px; overflow-y: auto; padding-right: 5px; }
-    .preset-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; background: #fff; position: relative; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); }
+    .preset-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; background: #fff; position: relative; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.1s; }
+    .preset-card:hover { border-color: #3498db; transform: translateY(-2px); }
     .preset-thumb { width: 100%; height: 100px; object-fit: contain; background: #f0f0f0; border-radius: 4px; margin-bottom: 6px; border: 1px solid #eee; }
     .preset-title { font-size: 0.8rem; font-weight: bold; color: #2c3e50; word-break: break-all; }
-    .btn-del { position: absolute; top: 4px; right: 4px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; cursor: pointer; line-height: 20px; text-align: center; }
+    .btn-del { position: absolute; top: 4px; right: 4px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; cursor: pointer; line-height: 20px; text-align: center; z-index: 2; }
     .empty-msg { font-size: 0.85rem; color: #999; text-align: center; padding: 20px 0; }
     .status-log { font-size: 0.8rem; color: #27ae60; font-weight: bold; margin-top: 5px; }
   </style>
@@ -85,16 +86,16 @@
         <p style="font-size: 0.8rem; color: #666;">파일명 형태: [숫자]_[표정이름]_[베이스이름].png</p>
       </div>
 
-      <!-- 2. 베이스 이미지 (베이스/) -->
+      <!-- 2. 베이스 이미지 -->
       <div class="section">
-        <h3>2. 베이스 이미지 (<code style="color:#e67e22;">베이스/</code> 폴더)</h3>
+        <h3>2. 베이스 이미지 (<code style="color:#e67e22;">베이스/</code>)</h3>
         <input type="file" id="baseInput" multiple accept="image/*" class="file-input">
         <div id="baseList" class="base-list"></div>
       </div>
 
-      <!-- 3. 레이어 설정 (각 한글 폴더) -->
+      <!-- 3. 레이어 설정 -->
       <div class="section">
-        <h3>3. 레이어 설정 (각 한글 폴더 자동 업로드)</h3>
+        <h3>3. 레이어 설정</h3>
         
         <div>
           <h4>레이어 1: 볼터치 (<code style="color:#e67e22;">볼터치/</code>) <span class="badge">복수 선택</span></h4>
@@ -141,6 +142,7 @@
 
       <div class="section">
         <h3>저장된 표정 프리셋 목록 <span id="presetCount" class="badge">0개</span></h3>
+        <p style="font-size:0.75rem; color:#888; margin-bottom:5px;">* 프리셋 카드를 클릭하면 해당 레이어 설정이 좌측 UI에 적용됩니다.</p>
         <div id="presetGrid" class="preset-grid">
           <div class="empty-msg">저장된 표정이 없습니다.<br>레이어를 선택 후 위 버튼을 눌러 저장하세요.</div>
         </div>
@@ -190,7 +192,15 @@
       };
     }
 
-    // GitHub API Core: 파일 로드
+    // Base64 인코딩/디코딩 안전 함수 (한글 지원)
+    function utf8ToBase64(str) {
+      return btoa(unescape(encodeURIComponent(str)));
+    }
+    function base64ToUtf8(str) {
+      return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
+    }
+
+    // GitHub API 파일 조회
     async function fetchGhFile(path) {
       const { owner, repo, branch, token } = getGhConfig();
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${branch}`, {
@@ -200,13 +210,24 @@
       return await res.json();
     }
 
-    // GitHub API Core: 파일 업로드/덮어쓰기 (Commit)
+    // GitHub API Private 이미지 안전 로드
+    async function fetchGhImageAsObjectUrl(downloadUrl) {
+      const { token } = getGhConfig();
+      const res = await fetch(downloadUrl, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {}
+      });
+      const blob = await res.blob();
+      return URL.createObjectURL(blob);
+    }
+
+    // GitHub API 파일 업로드/덮어쓰기
     async function uploadGhFile(path, base64Content, message) {
       const { owner, repo, branch, token } = getGhConfig();
       if (!token) throw new Error('GitHub Token이 필요합니다.');
 
       const existing = await fetchGhFile(path);
       const sha = existing ? existing.sha : undefined;
+      const pureBase64 = base64Content.includes(',') ? base64Content.split(',')[1] : base64Content;
 
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}`, {
         method: 'PUT',
@@ -216,7 +237,7 @@
         },
         body: JSON.stringify({
           message,
-          content: base64Content.replace(/^data:image\/\w+;base64,/, ''),
+          content: pureBase64,
           branch,
           sha
         })
@@ -270,7 +291,7 @@
       });
     }
 
-    // Canvas 합성
+    // Canvas 합성 (파일명 name 매칭 기반)
     function drawLayersToCanvas(targetCanvas, targetCtx, baseImg, layerSelections) {
       if (baseImg) {
         targetCanvas.width = baseImg.naturalWidth || baseImg.width;
@@ -283,9 +304,9 @@
       ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'].forEach(cat => {
         const sel = layerSelections[cat];
         if (Array.isArray(sel)) {
-          state.layers[cat].filter(l => sel.includes(l.id)).forEach(l => targetCtx.drawImage(l.img, l.cropX, l.cropY));
+          state.layers[cat].filter(l => sel.includes(l.name)).forEach(l => targetCtx.drawImage(l.img, l.cropX, l.cropY));
         } else if (sel) {
-          const item = state.layers[cat].find(l => l.id === sel);
+          const item = state.layers[cat].find(l => l.name === sel);
           if (item) targetCtx.drawImage(item.img, item.cropX, item.cropY);
         }
       });
@@ -294,25 +315,24 @@
     function renderPreview() {
       const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
       const currentSelections = {
-        blush: state.layers.blush.filter(l => l.selected).map(l => l.id),
-        mouth: state.layers.mouth.find(l => l.selected)?.id || null,
-        eyes: state.layers.eyes.find(l => l.selected)?.id || null,
-        eyebrows: state.layers.eyebrows.find(l => l.selected)?.id || null,
-        deco: state.layers.deco.filter(l => l.selected).map(l => l.id)
+        blush: state.layers.blush.filter(l => l.selected).map(l => l.name),
+        mouth: state.layers.mouth.find(l => l.selected)?.name || null,
+        eyes: state.layers.eyes.find(l => l.selected)?.name || null,
+        eyebrows: state.layers.eyebrows.find(l => l.selected)?.name || null,
+        deco: state.layers.deco.filter(l => l.selected).map(l => l.name)
       };
       drawLayersToCanvas(canvas, ctx, activeBase, currentSelections);
     }
 
-    // GitHub 연동: 저장소 폴더 데이터 불러오기
+    // GitHub 데이터 로드
     document.getElementById('connectGhBtn').addEventListener('click', async () => {
       try {
         log('저장소 연결 중...');
         
         // 1. settings.json 확인 및 로드
         const settingsFile = await fetchGhFile('settings.json');
-        let importedSettings = null;
         if (settingsFile && settingsFile.content) {
-          importedSettings = JSON.parse(decodeURIComponent(escape(atob(settingsFile.content))));
+          const importedSettings = JSON.parse(base64ToUtf8(settingsFile.content));
           if (importedSettings.prefixNum) document.getElementById('prefixNum').value = importedSettings.prefixNum;
           if (importedSettings.expressionName) document.getElementById('expressionName').value = importedSettings.expressionName;
           state.savedPresets = importedSettings.savedPresets || [];
@@ -320,22 +340,24 @@
 
         // 2. 베이스 폴더 읽기
         const baseFiles = await fetchGhFile(FOLDER_MAP.base) || [];
-        state.bases = await Promise.all(baseFiles.filter(f => f.type === 'file').map(async (f, idx) => ({
-          id: 'base_' + idx,
-          baseName: f.name.split('.')[0],
-          img: await loadImageFromSrc(f.download_url)
-        })));
+        state.bases = await Promise.all(baseFiles.filter(f => f.type === 'file').map(async (f) => {
+          const blobUrl = await fetchGhImageAsObjectUrl(f.download_url);
+          return {
+            baseName: f.name.split('.')[0],
+            img: await loadImageFromSrc(blobUrl)
+          };
+        }));
         renderBaseList();
 
-        // 3. 각 레이어 폴더 읽기
+        // 3. 레이어 폴더 읽기
         const categories = ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'];
         for (const cat of categories) {
           const folderFiles = await fetchGhFile(FOLDER_MAP[cat]) || [];
-          state.layers[cat] = await Promise.all(folderFiles.filter(f => f.type === 'file').map(async (f, idx) => {
-            const rawImg = await loadImageFromSrc(f.download_url);
+          state.layers[cat] = await Promise.all(folderFiles.filter(f => f.type === 'file').map(async (f) => {
+            const blobUrl = await fetchGhImageAsObjectUrl(f.download_url);
+            const rawImg = await loadImageFromSrc(blobUrl);
             const { img, cropX, cropY } = await cropImageToOpaque(rawImg);
             return {
-              id: `${cat}_${idx}`,
               name: f.name.split('.')[0],
               selected: false,
               cropX, cropY, img
@@ -363,12 +385,12 @@
           savedPresets: state.savedPresets
         };
         const jsonString = JSON.stringify(exportData, null, 2);
-        const base64 = btoa(unescape(encodeURIComponent(jsonString)));
+        const base64 = utf8ToBase64(jsonString);
 
         await uploadGhFile('settings.json', base64, 'Update settings.json');
         log('settings.json이 성공적으로 깃허브에 저장/덮어쓰기 되었습니다.');
       } catch (err) {
-        log(' settings.json 저장 실패: ' + err.message);
+        log('settings.json 저장 실패: ' + err.message);
       }
     });
 
@@ -388,14 +410,14 @@
               await uploadGhFile(filePath, base64, `Add ${file.name} to ${folder}`);
               
               const loadedImg = await loadImageFromSrc(base64);
+              const name = file.name.split('.')[0];
               if (category === 'base') {
-                state.bases.push({ id: 'base_' + Date.now(), baseName: file.name.split('.')[0], img: loadedImg });
+                state.bases.push({ baseName: name, img: loadedImg });
                 renderBaseList();
               } else {
                 const { img, cropX, cropY } = await cropImageToOpaque(loadedImg);
                 state.layers[category].push({
-                  id: category + '_' + Date.now(),
-                  name: file.name.split('.')[0],
+                  name: name,
                   selected: false,
                   cropX, cropY, img
                 });
@@ -438,7 +460,7 @@
         const card = document.createElement('div');
         card.className = 'item-card';
         const inputType = isMultiple ? 'checkbox' : 'radio';
-        const inputName = isMultiple ? item.id : category + '_group';
+        const inputName = category + '_group';
 
         card.innerHTML = `
           <img src="${item.img.src}">
@@ -465,7 +487,7 @@
       renderLayerList('layerDecoList', 'deco', true);
     }
 
-    // 프리셋 생성
+    // 프리셋 생성 (파일명 name 기반 매칭)
     document.getElementById('savePresetBtn').addEventListener('click', () => {
       const num = document.getElementById('prefixNum').value.trim() || '01';
       const exp = document.getElementById('expressionName').value.trim() || 'expression';
@@ -475,15 +497,32 @@
         number: num,
         expressionName: exp,
         layers: {
-          blush: state.layers.blush.filter(l => l.selected).map(l => l.id),
-          mouth: state.layers.mouth.find(l => l.selected)?.id || null,
-          eyes: state.layers.eyes.find(l => l.selected)?.id || null,
-          eyebrows: state.layers.eyebrows.find(l => l.selected)?.id || null,
-          deco: state.layers.deco.filter(l => l.selected).map(l => l.id)
+          blush: state.layers.blush.filter(l => l.selected).map(l => l.name),
+          mouth: state.layers.mouth.find(l => l.selected)?.name || null,
+          eyes: state.layers.eyes.find(l => l.selected)?.name || null,
+          eyebrows: state.layers.eyebrows.find(l => l.selected)?.name || null,
+          deco: state.layers.deco.filter(l => l.selected).map(l => l.name)
         }
       });
       renderPresetList();
     });
+
+    // 프리셋 선택 시 좌측 UI 체크박스와 상태 동기화
+    function applyPresetToUI(preset) {
+      ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'].forEach(cat => {
+        const sel = preset.layers[cat];
+        if (Array.isArray(sel)) {
+          state.layers[cat].forEach(l => l.selected = sel.includes(l.name));
+        } else {
+          state.layers[cat].forEach(l => l.selected = (l.name === sel));
+        }
+      });
+      document.getElementById('prefixNum').value = preset.number;
+      document.getElementById('expressionName').value = preset.expressionName;
+
+      renderAllLayerLists();
+      renderPreview();
+    }
 
     function renderPresetList() {
       const container = document.getElementById('presetGrid');
@@ -508,15 +547,25 @@
           <img class="preset-thumb" src="${tempCanvas.toDataURL()}">
           <div class="preset-title">${preset.number}_${preset.expressionName}</div>
         `;
-        card.querySelector('.btn-del').addEventListener('click', () => {
+
+        // 카드 클릭 시 해당 프리셋 레이어 설정 UI 적용
+        card.addEventListener('click', (e) => {
+          if (e.target.classList.contains('btn-del')) return;
+          applyPresetToUI(preset);
+        });
+
+        // 삭제 버튼
+        card.querySelector('.btn-del').addEventListener('click', (e) => {
+          e.stopPropagation();
           state.savedPresets.splice(idx, 1);
           renderPresetList();
         });
+
         container.appendChild(card);
       });
     }
 
-    // 일괄 저장: GitHub '결과물/' 폴더 커밋 및 ZIP 동시 내려받기
+    // 일괄 저장 (GitHub '결과물/' 폴더 커밋 및 ZIP 다운로드)
     document.getElementById('downloadAllBtn').addEventListener('click', async () => {
       if (state.bases.length === 0 || state.savedPresets.length === 0) {
         alert('베이스 및 저장된 표정 프리셋이 필요합니다.');
@@ -535,12 +584,10 @@
           
           const fileName = `${preset.number}_${preset.expressionName}_${base.baseName}.png`;
           const dataUrl = tempCanvas.toDataURL('image/png');
-          const base64Data = dataUrl.replace(/^data:image\/png;base64,/, "");
+          const base64Data = dataUrl.split(',')[1];
 
-          // 1. ZIP에 추가
           zip.file(fileName, base64Data, { base64: true });
 
-          // 2. GitHub '결과물/' 폴더에 자동 커밋
           try {
             await uploadGhFile(`${FOLDER_MAP.output}/${fileName}`, base64Data, `Add generated image ${fileName}`);
           } catch (err) {
