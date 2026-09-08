@@ -1,0 +1,18 @@
+{
+  "prefixNum": "01",
+  "expressionName": "smile",
+  "savedPresets": [
+    {
+      "id": "preset_1788882077756",
+      "number": "01",
+      "expressionName": "smile",
+      "layers": {
+        "blush": [],
+        "mouth": null,
+        "eyes": null,
+        "eyebrows": null,
+        "deco": []
+      }
+    }
+  ]
+}
