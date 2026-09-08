@@ -176,7 +176,6 @@
       document.getElementById('statusLog').textContent = msg;
     }
 
-    // 이미지 파일 확장자 판별 함수
     function isImageFile(fileName) {
       return /\.(png|jpe?g|webp|gif|svg)$/i.test(fileName);
     }
@@ -203,7 +202,20 @@
       return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
     }
 
-    // GitHub API 파일/목록 조회
+    // CORS 우회용 Base64 -> Blob URL 변환
+    function base64ToBlobUrl(base64, mimeType = 'image/png') {
+      const pureBase64 = base64.replace(/\s/g, '');
+      const byteCharacters = atob(pureBase64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+      return URL.createObjectURL(blob);
+    }
+
+    // GitHub REST API 파일/목록 읽기
     async function fetchGhFile(path) {
       const { owner, repo, branch, token } = getGhConfig();
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${branch}`, {
@@ -213,18 +225,13 @@
       return await res.json();
     }
 
-    // GitHub REST API 규격으로 Private/Public 공통 바이너리 로드
-    async function fetchGhImageAsObjectUrl(fileApiUrl) {
-      const { token } = getGhConfig();
-      const headers = {
-        'Accept': 'application/vnd.github.v3.raw'
-      };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-
-      const res = await fetch(fileApiUrl, { headers });
-      if (!res.ok) throw new Error('이미지 파일 응답 실패');
-      const blob = await res.blob();
-      return URL.createObjectURL(blob);
+    // REST API Base64를 활용한 안전한 이미지 로딩 (CORS 사전 검사 우회)
+    async function fetchGhImageByPath(path) {
+      const fileData = await fetchGhFile(path);
+      if (!fileData || !fileData.content) throw new Error(`파일 데이터를 불러올 수 없음: ${path}`);
+      
+      const blobUrl = base64ToBlobUrl(fileData.content);
+      return await loadImageFromSrc(blobUrl);
     }
 
     // GitHub API 파일 업로드/덮어쓰기
@@ -259,7 +266,7 @@
         const img = new Image();
         img.crossOrigin = 'Anonymous';
         img.onload = () => resolve(img);
-        img.onerror = () => reject(new Error('이미지 로드 오류'));
+        img.onerror = () => reject(new Error('이미지 엘리먼트 로드 실패'));
         img.src = src;
       });
     }
@@ -330,7 +337,7 @@
       drawLayersToCanvas(canvas, ctx, activeBase, currentSelections);
     }
 
-    // GitHub 연동 데이터 가져오기
+    // GitHub 데이터 연동 및 가져오기
     document.getElementById('connectGhBtn').addEventListener('click', async () => {
       try {
         log('저장소 연결 중...');
@@ -344,21 +351,22 @@
           state.savedPresets = importedSettings.savedPresets || [];
         }
 
-        // 2. 베이스 폴더 읽기 (이미지 파일만 필터링)
+        // 2. 베이스 폴더 로드
         const baseFiles = await fetchGhFile(FOLDER_MAP.base) || [];
         const validBaseFiles = Array.isArray(baseFiles) ? baseFiles.filter(f => f.type === 'file' && isImageFile(f.name)) : [];
-        
+
         state.bases = [];
         for (const f of validBaseFiles) {
           try {
-            const blobUrl = await fetchGhImageAsObjectUrl(f.url);
-            const img = await loadImageFromSrc(blobUrl);
+            const img = await fetchGhImageByPath(`${FOLDER_MAP.base}/${f.name}`);
             state.bases.push({ baseName: f.name.split('.')[0], img });
-          } catch (e) { console.warn(`파일 로드 실패: ${f.name}`); }
+          } catch (e) {
+            console.warn(`베이스 로드 실패: ${f.name}`, e);
+          }
         }
         renderBaseList();
 
-        // 3. 레이어 폴더 읽기 (이미지 파일만 필터링)
+        // 3. 레이어 폴더 로드
         const categories = ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'];
         for (const cat of categories) {
           const folderFiles = await fetchGhFile(FOLDER_MAP[cat]) || [];
@@ -367,15 +375,16 @@
           state.layers[cat] = [];
           for (const f of validFolderFiles) {
             try {
-              const blobUrl = await fetchGhImageAsObjectUrl(f.url);
-              const rawImg = await loadImageFromSrc(blobUrl);
+              const rawImg = await fetchGhImageByPath(`${FOLDER_MAP[cat]}/${f.name}`);
               const { img, cropX, cropY } = await cropImageToOpaque(rawImg);
               state.layers[cat].push({
                 name: f.name.split('.')[0],
                 selected: false,
                 cropX, cropY, img
               });
-            } catch (e) { console.warn(`레이어 로드 실패: ${f.name}`); }
+            } catch (e) {
+              console.warn(`레이어 로드 실패: ${f.name}`, e);
+            }
           }
         }
 
@@ -401,7 +410,7 @@
         const base64 = utf8ToBase64(jsonString);
 
         await uploadGhFile('settings.json', base64, 'Update settings.json');
-        log('settings.json이 성공적으로 깃허브에 저장/덮어쓰기 되었습니다.');
+        log('settings.json이 성공적으로 깃허브에 저장되었습니다.');
       } catch (err) {
         log('settings.json 저장 실패: ' + err.message);
       }
