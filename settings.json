@@ -1,6 +1,6 @@
 {
-  "prefixNum": "00",
-  "expressionName": "기본",
+  "prefixNum": "02",
+  "expressionName": "농담",
   "savedPresets": [
     {
       "id": "preset_1788882723884",
@@ -14,6 +14,39 @@
         "eyes": "기본 눈",
         "eyebrows": "기본 눈썹",
         "deco": []
+      }
+    },
+    {
+      "id": "preset_1788904582872",
+      "number": "03",
+      "expressionName": "부끄러움",
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "살짝 벌린 입",
+        "eyes": "먼산 눈",
+        "eyebrows": "약찌풀 눈썹",
+        "deco": [
+          "볼터치 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1788904617118",
+      "number": "01",
+      "expressionName": "이빨웃음",
+      "layers": {
+        "blush": [
+          "기본 볼터치",
+          "진한 볼터치"
+        ],
+        "mouth": "이빨 웃음",
+        "eyes": "웃는눈",
+        "eyebrows": "바짝 눈썹",
+        "deco": [
+          "볼터치 장식"
+        ]
       }
     }
   ]
