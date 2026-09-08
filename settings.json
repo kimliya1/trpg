@@ -3,11 +3,13 @@
   "expressionName": "smile",
   "savedPresets": [
     {
-      "id": "preset_1788882077756",
+      "id": "preset_1788882309605",
       "number": "01",
       "expressionName": "smile",
       "layers": {
-        "blush": [],
+        "blush": [
+          "blush_1788882304224"
+        ],
         "mouth": null,
         "eyes": null,
         "eyebrows": null,
