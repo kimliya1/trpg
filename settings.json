@@ -1,6 +1,6 @@
 {
-  "prefixNum": "02",
-  "expressionName": "농담",
+  "prefixNum": "06",
+  "expressionName": "뻘쭘",
   "savedPresets": [
     {
       "id": "preset_1788882723884",
@@ -17,8 +17,24 @@
       }
     },
     {
-      "id": "preset_1788904582872",
-      "number": "03",
+      "id": "preset_1788941095760",
+      "number": "10",
+      "expressionName": "공포",
+      "layers": {
+        "blush": [],
+        "mouth": "살짝 벌린 입",
+        "eyes": "놀란 눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": [
+          "땀(아래) 장식",
+          "볼터치 장식",
+          "싸아 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1788941116275",
+      "number": "05",
       "expressionName": "부끄러움",
       "layers": {
         "blush": [
@@ -33,8 +49,40 @@
       }
     },
     {
-      "id": "preset_1788904617118",
+      "id": "preset_1788941131971",
+      "number": "04",
+      "expressionName": "농담",
+      "layers": {
+        "blush": [
+          "기본 볼터치",
+          "진한 볼터치"
+        ],
+        "mouth": "웃는 입",
+        "eyes": "반눈",
+        "eyebrows": "바짝 눈썹",
+        "deco": [
+          "볼터치 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1788941275445",
       "number": "01",
+      "expressionName": "미소",
+      "layers": {
+        "blush": [
+          "기본 볼터치",
+          "진한 볼터치"
+        ],
+        "mouth": "기본 입",
+        "eyes": "반눈",
+        "eyebrows": "바짝 눈썹",
+        "deco": []
+      }
+    },
+    {
+      "id": "preset_1788941293265",
+      "number": "03",
       "expressionName": "이빨웃음",
       "layers": {
         "blush": [
@@ -42,6 +90,23 @@
           "진한 볼터치"
         ],
         "mouth": "이빨 웃음",
+        "eyes": "웃는눈",
+        "eyebrows": "바짝 눈썹",
+        "deco": [
+          "볼터치 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1788941341213",
+      "number": "02",
+      "expressionName": "웃음",
+      "layers": {
+        "blush": [
+          "기본 볼터치",
+          "진한 볼터치"
+        ],
+        "mouth": "웃는 입",
         "eyes": "웃는눈",
         "eyebrows": "바짝 눈썹",
         "deco": [
