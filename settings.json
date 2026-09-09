@@ -1,5 +1,5 @@
 {
-  "prefixNum": "06",
+  "prefixNum": "05",
   "expressionName": "뻘쭘",
   "savedPresets": [
     {
@@ -29,22 +29,6 @@
           "땀(아래) 장식",
           "볼터치 장식",
           "싸아 장식"
-        ]
-      }
-    },
-    {
-      "id": "preset_1788941116275",
-      "number": "05",
-      "expressionName": "부끄러움",
-      "layers": {
-        "blush": [
-          "기본 볼터치"
-        ],
-        "mouth": "살짝 벌린 입",
-        "eyes": "먼산 눈",
-        "eyebrows": "약찌풀 눈썹",
-        "deco": [
-          "볼터치 장식"
         ]
       }
     },
@@ -110,6 +94,41 @@
         "eyes": "웃는눈",
         "eyebrows": "바짝 눈썹",
         "deco": [
+          "볼터치 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1788941552387",
+      "number": "06",
+      "expressionName": "부끄러움",
+      "layers": {
+        "blush": [
+          "기본 볼터치",
+          "진한 볼터치"
+        ],
+        "mouth": "삐죽입",
+        "eyes": "먼산 눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": [
+          "땀(아래) 장식",
+          "볼터치 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1788941609402",
+      "number": "05",
+      "expressionName": "뻘쭘",
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "살짝 벌린 입",
+        "eyes": "먼산 눈",
+        "eyebrows": "약찌풀 눈썹",
+        "deco": [
+          "땀(아래) 장식",
           "볼터치 장식"
         ]
       }
