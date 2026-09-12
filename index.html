@@ -27,8 +27,8 @@
     .item-card input[type="text"] { width: 100%; font-size: 0.75rem; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; }
     .item-card label { font-size: 0.75rem; cursor: pointer; display: block; word-break: break-all; }
     
-    .preview-box { text-align: center; margin-bottom: 15px; }
-    canvas { border: 1px solid #ccc; background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px; max-width: 100%; max-height: 280px; width: auto; height: auto; border-radius: 4px; }
+    .preview-box { text-align: center; margin-bottom: 15px; user-select: none; }
+    canvas { border: 1px solid #ccc; background-image: linear-gradient(45deg, #ccc 25%, transparent 25%), linear-gradient(-45deg, #ccc 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ccc 75%), linear-gradient(-45deg, transparent 75%, #ccc 75%); background-size: 16px 16px; background-position: 0 0, 0 8px, 8px -8px, -8px 0px; max-width: 100%; max-height: 280px; width: auto; height: auto; border-radius: 4px; cursor: crosshair; touch-action: none; }
 
     .btn { background: #3498db; color: white; border: none; padding: 10px 16px; font-size: 0.95rem; border-radius: 6px; cursor: pointer; font-weight: bold; width: 100%; transition: 0.2s; }
     .btn:hover { background: #2980b9; }
@@ -47,8 +47,9 @@
     .crop-config-box label { font-size: 0.8rem; font-weight: bold; color: #34495e; display: block; margin-bottom: 6px; }
 
     .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 12px; margin-top: 10px; max-height: 420px; overflow-y: auto; padding-right: 5px; }
-    .preset-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; background: #fff; position: relative; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.1s; }
+    .preset-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; background: #fff; position: relative; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.1s, border-color 0.2s; }
     .preset-card:hover { border-color: #3498db; transform: translateY(-2px); }
+    .preset-card.active { border: 2px solid #2ecc71; background: #f0fff4; }
     
     .preset-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
     .preset-card-actions { display: flex; gap: 4px; }
@@ -154,7 +155,7 @@
     <!-- 우측: 미리보기, 표정 저장 및 일괄/개별 다운로드 -->
     <div class="right-panel">
       <div class="section">
-        <h3>실시간 미리보기</h3>
+        <h3>실시간 미리보기 <span style="font-size:0.75rem; color:#7f8c8d; font-weight:normal;">(이미지 위를 드래그하여 썸네일 영역 지정)</span></h3>
         <div class="preview-box">
           <canvas id="previewCanvas" width="400" height="400"></canvas>
         </div>
@@ -167,12 +168,13 @@
         
         <!-- 썸네일 크롭 범위 설정 영역 -->
         <div class="crop-config-box">
-          <label>🖼️ 프리셋 썸네일 표시 범위 지정 (px)</label>
+          <label>🖼️ 썸네일 표시 범위 (px) - 드래그 시 자동 입력 & 저장됨</label>
           <div class="input-group" style="margin-bottom:0;">
             <input type="number" id="cropX" placeholder="시작 X (0)" value="0">
             <input type="number" id="cropY" placeholder="시작 Y (0)" value="0">
             <input type="number" id="cropW" placeholder="가로 (전체)">
             <input type="number" id="cropH" placeholder="세로 (전체)">
+            <button id="resetCropBtn" style="padding: 0 8px; font-size:0.75rem; cursor:pointer;">초기화</button>
           </div>
         </div>
 
@@ -203,8 +205,13 @@
     const state = {
       bases: [],
       layers: { blush: [], mouth: [], eyes: [], eyebrows: [], deco: [] },
-      savedPresets: []
+      savedPresets: [],
+      activePresetId: null
     };
+
+    let isDraggingCrop = false;
+    let cropStartX = 0;
+    let cropStartY = 0;
 
     function log(msg) {
       document.getElementById('statusLog').textContent = msg;
@@ -220,9 +227,93 @@
       el.addEventListener('input', () => localStorage.setItem(id, el.value));
     });
 
+    function updateActivePresetCrop() {
+      if (!state.activePresetId) return;
+      const preset = state.savedPresets.find(p => p.id === state.activePresetId);
+      if (preset) {
+        preset.crop = {
+          x: parseInt(document.getElementById('cropX').value) || 0,
+          y: parseInt(document.getElementById('cropY').value) || 0,
+          w: parseInt(document.getElementById('cropW').value) || 0,
+          h: parseInt(document.getElementById('cropH').value) || 0
+        };
+      }
+    }
+
     ['cropX', 'cropY', 'cropW', 'cropH'].forEach(id => {
-      document.getElementById(id).addEventListener('input', renderPresetList);
+      document.getElementById(id).addEventListener('input', () => {
+        updateActivePresetCrop();
+        renderPreview();
+        renderPresetList();
+      });
     });
+
+    document.getElementById('resetCropBtn').addEventListener('click', () => {
+      document.getElementById('cropX').value = 0;
+      document.getElementById('cropY').value = 0;
+      document.getElementById('cropW').value = '';
+      document.getElementById('cropH').value = '';
+      updateActivePresetCrop();
+      renderPreview();
+      renderPresetList();
+    });
+
+    function getCanvasCoords(e) {
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      
+      let clientX = e.clientX;
+      let clientY = e.clientY;
+
+      if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      }
+
+      return {
+        x: Math.max(0, Math.min(canvas.width, (clientX - rect.left) * scaleX)),
+        y: Math.max(0, Math.min(canvas.height, (clientY - rect.top) * scaleY))
+      };
+    }
+
+    const startDrag = (e) => {
+      isDraggingCrop = true;
+      const coords = getCanvasCoords(e);
+      cropStartX = coords.x;
+      cropStartY = coords.y;
+    };
+
+    const moveDrag = (e) => {
+      if (!isDraggingCrop) return;
+      const coords = getCanvasCoords(e);
+
+      const x = Math.round(Math.min(cropStartX, coords.x));
+      const y = Math.round(Math.min(cropStartY, coords.y));
+      const w = Math.round(Math.abs(coords.x - cropStartX));
+      const h = Math.round(Math.abs(coords.y - cropStartY));
+
+      document.getElementById('cropX').value = x;
+      document.getElementById('cropY').value = y;
+      document.getElementById('cropW').value = w;
+      document.getElementById('cropH').value = h;
+
+      updateActivePresetCrop();
+      renderPreview();
+      renderPresetList();
+    };
+
+    const endDrag = () => {
+      isDraggingCrop = false;
+    };
+
+    canvas.addEventListener('mousedown', startDrag);
+    canvas.addEventListener('mousemove', moveDrag);
+    window.addEventListener('mouseup', endDrag);
+
+    canvas.addEventListener('touchstart', startDrag);
+    canvas.addEventListener('touchmove', moveDrag);
+    window.addEventListener('touchend', endDrag);
 
     function getGhConfig() {
       return {
@@ -359,6 +450,27 @@
       });
     }
 
+    function drawCropOverlay(targetCtx, canvasW, canvasH) {
+      const cx = parseInt(document.getElementById('cropX').value) || 0;
+      const cy = parseInt(document.getElementById('cropY').value) || 0;
+      const cw = parseInt(document.getElementById('cropW').value) || 0;
+      const ch = parseInt(document.getElementById('cropH').value) || 0;
+
+      if (cw <= 0 || ch <= 0) return;
+
+      targetCtx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+      targetCtx.fillRect(0, 0, canvasW, cy);
+      targetCtx.fillRect(0, cy + ch, canvasW, canvasH - (cy + ch));
+      targetCtx.fillRect(0, cy, cx, ch);
+      targetCtx.fillRect(cx + cw, cy, canvasW - (cx + cw), ch);
+
+      targetCtx.strokeStyle = '#3498db';
+      targetCtx.lineWidth = 2;
+      targetCtx.setLineDash([6, 4]);
+      targetCtx.strokeRect(cx, cy, cw, ch);
+      targetCtx.setLineDash([]);
+    }
+
     function renderPreview() {
       const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
       const currentSelections = {
@@ -369,6 +481,7 @@
         deco: state.layers.deco.filter(l => l.selected).map(l => l.name)
       };
       drawLayersToCanvas(canvas, ctx, activeBase, currentSelections);
+      drawCropOverlay(ctx, canvas.width, canvas.height);
     }
 
     document.getElementById('connectGhBtn').addEventListener('click', async () => {
@@ -560,10 +673,22 @@
       const exp = document.getElementById('expressionName').value.trim() || 'expression';
       const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : '베이스';
 
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
+      const currentSelections = {
+        blush: state.layers.blush.filter(l => l.selected).map(l => l.name),
+        mouth: state.layers.mouth.find(l => l.selected)?.name || null,
+        eyes: state.layers.eyes.find(l => l.selected)?.name || null,
+        eyebrows: state.layers.eyebrows.find(l => l.selected)?.name || null,
+        deco: state.layers.deco.filter(l => l.selected).map(l => l.name)
+      };
+      drawLayersToCanvas(tempCanvas, tempCtx, activeBase, currentSelections);
+
       const fileName = `${num}_${exp}_${activeBaseName}.png`;
       const link = document.createElement('a');
       link.download = fileName;
-      link.href = canvas.toDataURL('image/png');
+      link.href = tempCanvas.toDataURL('image/png');
       link.click();
     });
 
@@ -571,10 +696,16 @@
       const num = document.getElementById('prefixNum').value.trim() || '01';
       const exp = document.getElementById('expressionName').value.trim() || 'expression';
 
-      state.savedPresets.push({
+      const newPreset = {
         id: 'preset_' + Date.now(),
         number: num,
         expressionName: exp,
+        crop: {
+          x: parseInt(document.getElementById('cropX').value) || 0,
+          y: parseInt(document.getElementById('cropY').value) || 0,
+          w: parseInt(document.getElementById('cropW').value) || 0,
+          h: parseInt(document.getElementById('cropH').value) || 0
+        },
         layers: {
           blush: state.layers.blush.filter(l => l.selected).map(l => l.name),
           mouth: state.layers.mouth.find(l => l.selected)?.name || null,
@@ -582,11 +713,15 @@
           eyebrows: state.layers.eyebrows.find(l => l.selected)?.name || null,
           deco: state.layers.deco.filter(l => l.selected).map(l => l.name)
         }
-      });
+      };
+
+      state.savedPresets.push(newPreset);
+      state.activePresetId = newPreset.id;
       renderPresetList();
     });
 
     function applyPresetToUI(preset) {
+      state.activePresetId = preset.id;
       ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'].forEach(cat => {
         const sel = preset.layers[cat];
         if (Array.isArray(sel)) {
@@ -598,8 +733,16 @@
       document.getElementById('prefixNum').value = preset.number;
       document.getElementById('expressionName').value = preset.expressionName;
 
+      if (preset.crop) {
+        document.getElementById('cropX').value = preset.crop.x ?? 0;
+        document.getElementById('cropY').value = preset.crop.y ?? 0;
+        document.getElementById('cropW').value = preset.crop.w || '';
+        document.getElementById('cropH').value = preset.crop.h || '';
+      }
+
       renderAllLayerLists();
       renderPreview();
+      renderPresetList();
     }
 
     function downloadPresetImage(preset, idx) {
@@ -632,20 +775,18 @@
       const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
       const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : '베이스';
 
-      // 썸네일 잘라내기 범위 파라미터 계산
-      const cx = parseInt(document.getElementById('cropX').value) || 0;
-      const cy = parseInt(document.getElementById('cropY').value) || 0;
-
       state.savedPresets.forEach((preset, idx) => {
-        // 1. 전체 합성 이미지 생성
         drawLayersToCanvas(fullCanvas, fullCtx, activeBase, preset.layers);
 
         const fullW = fullCanvas.width || 400;
         const fullH = fullCanvas.height || 400;
-        const cw = parseInt(document.getElementById('cropW').value) || fullW;
-        const ch = parseInt(document.getElementById('cropH').value) || fullH;
 
-        // 2. 썸네일 전용 크롭 캔버스에 영역만큼 잘라내어 그리기
+        const cropObj = preset.crop || {};
+        const cx = cropObj.x !== undefined ? cropObj.x : (parseInt(document.getElementById('cropX').value) || 0);
+        const cy = cropObj.y !== undefined ? cropObj.y : (parseInt(document.getElementById('cropY').value) || 0);
+        const cw = cropObj.w ? cropObj.w : (parseInt(document.getElementById('cropW').value) || fullW);
+        const ch = cropObj.h ? cropObj.h : (parseInt(document.getElementById('cropH').value) || fullH);
+
         const thumbCanvas = document.createElement('canvas');
         thumbCanvas.width = cw;
         thumbCanvas.height = ch;
@@ -658,7 +799,7 @@
         );
 
         const card = document.createElement('div');
-        card.className = 'preset-card';
+        card.className = 'preset-card' + (preset.id === state.activePresetId ? ' active' : '');
         card.innerHTML = `
           <div class="preset-card-header">
             <div class="preset-card-actions">
@@ -672,23 +813,19 @@
           </div>
           <img class="preset-thumb" src="${thumbCanvas.toDataURL()}">
           
-          <!-- 카드에서 숫자/표정이름 실시간 직접 수정 -->
           <div class="preset-edit-inputs">
             <input type="text" class="preset-edit-num" value="${preset.number}" title="숫자 수정">
             <input type="text" class="preset-edit-exp" value="${preset.expressionName}" title="표정 이름 수정">
           </div>
           
-          <!-- 숫자_표정(베이스) 형식 명시 -->
           <div class="preset-title">${preset.number}_${preset.expressionName}(${activeBaseName})</div>
         `;
 
-        // 카드 클릭 시 적용
         card.addEventListener('click', (e) => {
           if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
           applyPresetToUI(preset);
         });
 
-        // 숫자 직접 수정 시 이벤트
         const numInput = card.querySelector('.preset-edit-num');
         const expInput = card.querySelector('.preset-edit-exp');
         const titleDiv = card.querySelector('.preset-title');
@@ -702,7 +839,6 @@
         numInput.addEventListener('input', updatePresetInfo);
         expInput.addEventListener('input', updatePresetInfo);
 
-        // 순서 변경: 왼쪽
         card.querySelector('.btn-left').addEventListener('click', (e) => {
           e.stopPropagation();
           if (idx > 0) {
@@ -713,7 +849,6 @@
           }
         });
 
-        // 순서 변경: 오른쪽
         card.querySelector('.btn-right').addEventListener('click', (e) => {
           e.stopPropagation();
           if (idx < state.savedPresets.length - 1) {
@@ -724,15 +859,14 @@
           }
         });
 
-        // 개별 다운로드
         card.querySelector('.btn-preset-dl').addEventListener('click', (e) => {
           e.stopPropagation();
           downloadPresetImage(preset, idx);
         });
 
-        // 삭제
         card.querySelector('.btn-del').addEventListener('click', (e) => {
           e.stopPropagation();
+          if (state.activePresetId === preset.id) state.activePresetId = null;
           state.savedPresets.splice(idx, 1);
           renderPresetList();
         });
