@@ -34,19 +34,33 @@
     .btn:hover { background: #2980b9; }
     .btn-github { background: #2c3e50; }
     .btn-github:hover { background: #1a252f; }
-    .btn-save { background: #2ecc71; margin-bottom: 15px; }
+    .btn-save { background: #2ecc71; margin-bottom: 10px; }
     .btn-save:hover { background: #27ae60; }
+    .btn-single-download { background: #16a085; margin-bottom: 15px; }
+    .btn-single-download:hover { background: #117864; }
     .btn-download { background: #e67e22; font-size: 1.05rem; padding: 12px; }
     .btn-download:hover { background: #d35400; }
     .btn-sync { background: #8e44ad; }
     .btn-sync:hover { background: #732d91; }
 
-    .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; margin-top: 10px; max-height: 350px; overflow-y: auto; padding-right: 5px; }
+    .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 12px; margin-top: 10px; max-height: 380px; overflow-y: auto; padding-right: 5px; }
     .preset-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; background: #fff; position: relative; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.1s; }
     .preset-card:hover { border-color: #3498db; transform: translateY(-2px); }
-    .preset-thumb { width: 100%; height: 100px; object-fit: contain; background: #f0f0f0; border-radius: 4px; margin-bottom: 6px; border: 1px solid #eee; }
+    
+    .preset-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+    .preset-card-actions { display: flex; gap: 4px; }
+    
+    .btn-card { border: none; border-radius: 3px; font-size: 0.65rem; cursor: pointer; padding: 2px 6px; color: white; line-height: 1.2; }
+    .btn-order { background: #7f8c8d; }
+    .btn-order:hover:not(:disabled) { background: #34495e; }
+    .btn-order:disabled { opacity: 0.3; cursor: not-allowed; }
+    .btn-preset-dl { background: #16a085; }
+    .btn-preset-dl:hover { background: #117864; }
+    .btn-del { background: #e74c3c; }
+    .btn-del:hover { background: #c0392b; }
+
+    .preset-thumb { width: 100%; height: 95px; object-fit: contain; background: #f0f0f0; border-radius: 4px; margin-bottom: 6px; border: 1px solid #eee; }
     .preset-title { font-size: 0.8rem; font-weight: bold; color: #2c3e50; word-break: break-all; }
-    .btn-del { position: absolute; top: 4px; right: 4px; background: #e74c3c; color: white; border: none; border-radius: 50%; width: 20px; height: 20px; font-size: 0.7rem; cursor: pointer; line-height: 20px; text-align: center; z-index: 2; }
     .empty-msg { font-size: 0.85rem; color: #999; text-align: center; padding: 20px 0; }
     .status-log { font-size: 0.8rem; color: #27ae60; font-weight: bold; margin-top: 5px; }
   </style>
@@ -130,7 +144,7 @@
 
     </div>
 
-    <!-- 우측: 미리보기, 표정 저장 및 일괄 다운로드 -->
+    <!-- 우측: 미리보기, 표정 저장 및 일괄/개별 다운로드 -->
     <div class="right-panel">
       <div class="section">
         <h3>실시간 미리보기</h3>
@@ -138,11 +152,12 @@
           <canvas id="previewCanvas" width="400" height="400"></canvas>
         </div>
         <button id="savePresetBtn" class="btn btn-save">➕ 현재 선택된 레이어 설정 저장 (프리셋 추가)</button>
+        <button id="downloadSingleBtn" class="btn btn-single-download">💾 현재 미리보기 이미지 개별 다운로드</button>
       </div>
 
       <div class="section">
         <h3>저장된 표정 프리셋 목록 <span id="presetCount" class="badge">0개</span></h3>
-        <p style="font-size:0.75rem; color:#888; margin-bottom:5px;">* 프리셋 카드를 클릭하면 해당 레이어 설정이 좌측 UI에 적용됩니다.</p>
+        <p style="font-size:0.75rem; color:#888; margin-bottom:5px;">* ◀ / ▶ 버튼으로 순서를 변경하거나 💾 버튼으로 개별 저장할 수 있습니다.</p>
         <div id="presetGrid" class="preset-grid">
           <div class="empty-msg">저장된 표정이 없습니다.<br>레이어를 선택 후 위 버튼을 눌러 저장하세요.</div>
         </div>
@@ -202,7 +217,6 @@
       return decodeURIComponent(escape(atob(str.replace(/\s/g, ''))));
     }
 
-    // CORS 우회용 Base64 -> Blob URL 변환
     function base64ToBlobUrl(base64, mimeType = 'image/png') {
       const pureBase64 = base64.replace(/\s/g, '');
       const byteCharacters = atob(pureBase64);
@@ -215,7 +229,6 @@
       return URL.createObjectURL(blob);
     }
 
-    // GitHub REST API 파일/목록 읽기
     async function fetchGhFile(path) {
       const { owner, repo, branch, token } = getGhConfig();
       const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${encodeURIComponent(path)}?ref=${branch}`, {
@@ -225,7 +238,6 @@
       return await res.json();
     }
 
-    // REST API Base64를 활용한 안전한 이미지 로딩 (CORS 사전 검사 우회)
     async function fetchGhImageByPath(path) {
       const fileData = await fetchGhFile(path);
       if (!fileData || !fileData.content) throw new Error(`파일 데이터를 불러올 수 없음: ${path}`);
@@ -234,7 +246,6 @@
       return await loadImageFromSrc(blobUrl);
     }
 
-    // GitHub API 파일 업로드/덮어쓰기
     async function uploadGhFile(path, base64Content, message) {
       const { owner, repo, branch, token } = getGhConfig();
       if (!token) throw new Error('GitHub Token이 필요합니다.');
@@ -337,12 +348,10 @@
       drawLayersToCanvas(canvas, ctx, activeBase, currentSelections);
     }
 
-    // GitHub 데이터 연동 및 가져오기
     document.getElementById('connectGhBtn').addEventListener('click', async () => {
       try {
         log('저장소 연결 중...');
         
-        // 1. settings.json 로드
         const settingsFile = await fetchGhFile('settings.json');
         if (settingsFile && settingsFile.content) {
           const importedSettings = JSON.parse(base64ToUtf8(settingsFile.content));
@@ -351,7 +360,6 @@
           state.savedPresets = importedSettings.savedPresets || [];
         }
 
-        // 2. 베이스 폴더 로드
         const baseFiles = await fetchGhFile(FOLDER_MAP.base) || [];
         const validBaseFiles = Array.isArray(baseFiles) ? baseFiles.filter(f => f.type === 'file' && isImageFile(f.name)) : [];
 
@@ -366,7 +374,6 @@
         }
         renderBaseList();
 
-        // 3. 레이어 폴더 로드
         const categories = ['blush', 'mouth', 'eyes', 'eyebrows', 'deco'];
         for (const cat of categories) {
           const folderFiles = await fetchGhFile(FOLDER_MAP[cat]) || [];
@@ -510,6 +517,19 @@
       renderLayerList('layerDecoList', 'deco', true);
     }
 
+    // 현재 미리보기 이미지 개별 다운로드
+    document.getElementById('downloadSingleBtn').addEventListener('click', () => {
+      const num = document.getElementById('prefixNum').value.trim() || '01';
+      const exp = document.getElementById('expressionName').value.trim() || 'expression';
+      const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : 'base';
+
+      const fileName = `${num}_${exp}_${activeBaseName}.png`;
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = canvas.toDataURL('image/png');
+      link.click();
+    });
+
     document.getElementById('savePresetBtn').addEventListener('click', () => {
       const num = document.getElementById('prefixNum').value.trim() || '01';
       const exp = document.getElementById('expressionName').value.trim() || 'expression';
@@ -545,6 +565,22 @@
       renderPreview();
     }
 
+    // 특정 프리셋 개별 이미지 다운로드 함수
+    function downloadPresetImage(preset, idx) {
+      const tempCanvas = document.createElement('canvas');
+      const tempCtx = tempCanvas.getContext('2d');
+      const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
+      const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : 'base';
+
+      drawLayersToCanvas(tempCanvas, tempCtx, activeBase, preset.layers);
+      
+      const fileName = `${preset.number}_${preset.expressionName}_${activeBaseName}.png`;
+      const link = document.createElement('a');
+      link.download = fileName;
+      link.href = tempCanvas.toDataURL('image/png');
+      link.click();
+    }
+
     function renderPresetList() {
       const container = document.getElementById('presetGrid');
       document.getElementById('presetCount').textContent = state.savedPresets.length + '개';
@@ -564,16 +600,55 @@
         const card = document.createElement('div');
         card.className = 'preset-card';
         card.innerHTML = `
-          <button class="btn-del">&times;</button>
+          <div class="preset-card-header">
+            <div class="preset-card-actions">
+              <button class="btn-card btn-order btn-left" ${idx === 0 ? 'disabled' : ''} title="왼쪽으로 이동">◀</button>
+              <button class="btn-card btn-order btn-right" ${idx === state.savedPresets.length - 1 ? 'disabled' : ''} title="오른쪽으로 이동">▶</button>
+            </div>
+            <div class="preset-card-actions">
+              <button class="btn-card btn-preset-dl" title="이 프리셋 이미지 다운로드">💾</button>
+              <button class="btn-card btn-del" title="삭제">&times;</button>
+            </div>
+          </div>
           <img class="preset-thumb" src="${tempCanvas.toDataURL()}">
           <div class="preset-title">${preset.number}_${preset.expressionName}</div>
         `;
 
+        // 프리셋 카드 클릭 시 UI 설정 복원
         card.addEventListener('click', (e) => {
-          if (e.target.classList.contains('btn-del')) return;
+          if (e.target.tagName === 'BUTTON') return;
           applyPresetToUI(preset);
         });
 
+        // 순서 변경: 왼쪽 이동
+        card.querySelector('.btn-left').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (idx > 0) {
+            const temp = state.savedPresets[idx];
+            state.savedPresets[idx] = state.savedPresets[idx - 1];
+            state.savedPresets[idx - 1] = temp;
+            renderPresetList();
+          }
+        });
+
+        // 순서 변경: 오른쪽 이동
+        card.querySelector('.btn-right').addEventListener('click', (e) => {
+          e.stopPropagation();
+          if (idx < state.savedPresets.length - 1) {
+            const temp = state.savedPresets[idx];
+            state.savedPresets[idx] = state.savedPresets[idx + 1];
+            state.savedPresets[idx + 1] = temp;
+            renderPresetList();
+          }
+        });
+
+        // 개별 프리셋 이미지 다운로드
+        card.querySelector('.btn-preset-dl').addEventListener('click', (e) => {
+          e.stopPropagation();
+          downloadPresetImage(preset, idx);
+        });
+
+        // 프리셋 삭제
         card.querySelector('.btn-del').addEventListener('click', (e) => {
           e.stopPropagation();
           state.savedPresets.splice(idx, 1);
