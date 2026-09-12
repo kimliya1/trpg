@@ -105,7 +105,7 @@
           <input type="text" id="prefixNum" placeholder="숫자 (예: 01)" value="01">
           <input type="text" id="expressionName" placeholder="표정이름 (예: smile)" value="smile">
         </div>
-        <p style="font-size: 0.8rem; color: #666;">파일명 형태: [숫자]_[표정이름]_[베이스이름].png</p>
+        <p style="font-size: 0.8rem; color: #666;">파일명 형태: [숫자]_[표정이름]([베이스이름]).png</p>
       </div>
 
       <!-- 2. 베이스 이미지 -->
@@ -685,7 +685,7 @@
       };
       drawLayersToCanvas(tempCanvas, tempCtx, activeBase, currentSelections);
 
-      const fileName = `${num}_${exp}_${activeBaseName}.png`;
+      const fileName = `${num}_${exp}(${activeBaseName}).png`;
       const link = document.createElement('a');
       link.download = fileName;
       link.href = tempCanvas.toDataURL('image/png');
@@ -753,7 +753,7 @@
 
       drawLayersToCanvas(tempCanvas, tempCtx, activeBase, preset.layers);
       
-      const fileName = `${preset.number}_${preset.expressionName}_${activeBaseName}.png`;
+      const fileName = `${preset.number}_${preset.expressionName}(${activeBaseName}).png`;
       const link = document.createElement('a');
       link.download = fileName;
       link.href = tempCanvas.toDataURL('image/png');
@@ -891,7 +891,7 @@
         for (const base of state.bases) {
           drawLayersToCanvas(tempCanvas, tempCtx, base.img, preset.layers);
           
-          const fileName = `${preset.number}_${preset.expressionName}_${base.baseName}.png`;
+          const fileName = `${preset.number}_${preset.expressionName}(${base.baseName}).png`;
           const dataUrl = tempCanvas.toDataURL('image/png');
           const base64Data = dataUrl.split(',')[1];
 
