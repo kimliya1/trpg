@@ -1,11 +1,11 @@
 {
-  "prefixNum": "05",
-  "expressionName": "뻘쭘",
+  "prefixNum": "13",
+  "expressionName": "공포웃음",
   "thumbCrop": {
-    "x": 250,
-    "y": 50,
-    "w": 400,
-    "h": 350
+    "x": 337,
+    "y": 98,
+    "w": 368,
+    "h": 300
   },
   "savedPresets": [
     {
@@ -38,26 +38,9 @@
       }
     },
     {
-      "id": "preset_1788941341213",
+      "id": "preset_1788941293265",
       "number": "02",
       "expressionName": "웃음",
-      "layers": {
-        "blush": [
-          "기본 볼터치",
-          "진한 볼터치"
-        ],
-        "mouth": "웃는 입",
-        "eyes": "웃는눈",
-        "eyebrows": "바짝 눈썹",
-        "deco": [
-          "볼터치 장식"
-        ]
-      }
-    },
-    {
-      "id": "preset_1788941293265",
-      "number": "03",
-      "expressionName": "이빨웃음",
       "layers": {
         "blush": [
           "기본 볼터치",
@@ -73,7 +56,7 @@
     },
     {
       "id": "preset_1788941131971",
-      "number": "04",
+      "number": "03",
       "expressionName": "농담",
       "layers": {
         "blush": [
@@ -89,25 +72,75 @@
       }
     },
     {
-      "id": "preset_1788941609402",
+      "id": "preset_1789213145495",
+      "number": "04",
+      "expressionName": "얼떨떨",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치",
+          "진한 볼터치"
+        ],
+        "mouth": "웃는 입",
+        "eyes": "기본 눈",
+        "eyebrows": "기본 눈썹",
+        "deco": [
+          "땀(위) 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1789213197227",
       "number": "05",
-      "expressionName": "뻘쭘",
+      "expressionName": "삐질",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
       "layers": {
         "blush": [
           "기본 볼터치"
         ],
-        "mouth": "살짝 벌린 입",
-        "eyes": "먼산 눈",
-        "eyebrows": "약찌풀 눈썹",
+        "mouth": "삐죽입",
+        "eyes": "기본 눈",
+        "eyebrows": "기본 눈썹",
         "deco": [
-          "땀(아래) 장식",
-          "볼터치 장식"
+          "땀(아래) 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1789213526020",
+      "number": "06",
+      "expressionName": "곤란",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "웃는 입",
+        "eyes": "먼산 눈",
+        "eyebrows": "슬픈 눈썹",
+        "deco": [
+          "땀(위) 장식"
         ]
       }
     },
     {
       "id": "preset_1788941552387",
-      "number": "06",
+      "number": "07",
       "expressionName": "부끄러움",
       "layers": {
         "blush": [
@@ -124,8 +157,87 @@
       }
     },
     {
-      "id": "preset_1788941095760",
+      "id": "preset_1789213317534",
+      "number": "08",
+      "expressionName": "의문",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "삐죽입",
+        "eyes": "반눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": []
+      }
+    },
+    {
+      "id": "preset_1789215246612",
+      "number": "09",
+      "expressionName": "짜증",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [],
+        "mouth": "삐죽입",
+        "eyes": "찌풀눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": []
+      }
+    },
+    {
+      "id": "preset_1789215120384",
       "number": "10",
+      "expressionName": "분노",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [],
+        "mouth": "분노 입",
+        "eyes": "찌풀눈",
+        "eyebrows": "분노 눈썹",
+        "deco": [
+          "빡침장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1789212117350",
+      "number": "11",
+      "expressionName": "약공포",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [],
+        "mouth": "살짝 벌린 입",
+        "eyes": "기본 눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": [
+          "땀(아래) 장식",
+          "싸아 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1788941095760",
+      "number": "12",
       "expressionName": "공포",
       "layers": {
         "blush": [],
@@ -137,6 +249,131 @@
           "볼터치 장식",
           "싸아 장식"
         ]
+      }
+    },
+    {
+      "id": "preset_1789217982297",
+      "number": "13",
+      "expressionName": "공포웃음",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "웃는 입",
+        "eyes": "먼산 반눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": [
+          "땀(위) 장식",
+          "싸아 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1789217733479",
+      "number": "14",
+      "expressionName": "고민",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "삐죽입",
+        "eyes": "감은 눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": []
+      }
+    },
+    {
+      "id": "preset_1789217766207",
+      "number": "15",
+      "expressionName": "질림",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "살짝 벌린 입",
+        "eyes": "먼산 반눈",
+        "eyebrows": "찌풀 눈썹",
+        "deco": []
+      }
+    },
+    {
+      "id": "preset_1789217844832",
+      "number": "16",
+      "expressionName": "비웃음",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "웃는 입",
+        "eyes": "반눈",
+        "eyebrows": "슬픈 눈썹",
+        "deco": []
+      }
+    },
+    {
+      "id": "preset_1789217908721",
+      "number": "17",
+      "expressionName": "약놀람",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "살짝 벌린 입",
+        "eyes": "기본 눈",
+        "eyebrows": "기본 눈썹",
+        "deco": [
+          "땀(위) 장식"
+        ]
+      }
+    },
+    {
+      "id": "preset_1789217683897",
+      "number": "18",
+      "expressionName": "슬픔",
+      "crop": {
+        "x": 337,
+        "y": 98,
+        "w": 368,
+        "h": 300
+      },
+      "layers": {
+        "blush": [
+          "기본 볼터치"
+        ],
+        "mouth": "기본 입",
+        "eyes": "찌풀눈",
+        "eyebrows": "슬픈 눈썹",
+        "deco": []
       }
     }
   ]
