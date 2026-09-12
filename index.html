@@ -17,8 +17,8 @@
     .section h3 { font-size: 1.05rem; margin-bottom: 10px; color: #34495e; display: flex; justify-content: space-between; align-items: center; }
     .badge { font-size: 0.75rem; padding: 2px 6px; border-radius: 4px; background: #e0e0e0; font-weight: normal; }
     
-    .input-group { display: flex; gap: 10px; margin-bottom: 10px; }
-    .input-group input[type="text"], .input-group input[type="password"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
+    .input-group { display: flex; gap: 8px; margin-bottom: 10px; }
+    .input-group input[type="text"], .input-group input[type="password"], .input-group input[type="number"] { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 0.85rem; }
     .file-input { margin-bottom: 10px; }
     
     .base-list, .layer-list { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 10px; }
@@ -43,7 +43,10 @@
     .btn-sync { background: #8e44ad; }
     .btn-sync:hover { background: #732d91; }
 
-    .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(135px, 1fr)); gap: 12px; margin-top: 10px; max-height: 380px; overflow-y: auto; padding-right: 5px; }
+    .crop-config-box { background: #f0f4f8; padding: 10px; border-radius: 6px; margin-bottom: 12px; border: 1px solid #dcdfe6; }
+    .crop-config-box label { font-size: 0.8rem; font-weight: bold; color: #34495e; display: block; margin-bottom: 6px; }
+
+    .preset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr)); gap: 12px; margin-top: 10px; max-height: 420px; overflow-y: auto; padding-right: 5px; }
     .preset-card { border: 1px solid #e0e0e0; border-radius: 6px; padding: 8px; background: #fff; position: relative; text-align: center; box-shadow: 0 1px 4px rgba(0,0,0,0.05); cursor: pointer; transition: transform 0.1s; }
     .preset-card:hover { border-color: #3498db; transform: translateY(-2px); }
     
@@ -59,8 +62,12 @@
     .btn-del { background: #e74c3c; }
     .btn-del:hover { background: #c0392b; }
 
-    .preset-thumb { width: 100%; height: 95px; object-fit: contain; background: #f0f0f0; border-radius: 4px; margin-bottom: 6px; border: 1px solid #eee; }
-    .preset-title { font-size: 0.8rem; font-weight: bold; color: #2c3e50; word-break: break-all; }
+    .preset-thumb { width: 100%; height: 100px; object-fit: contain; background: #f0f0f0; border-radius: 4px; margin-bottom: 6px; border: 1px solid #eee; }
+    .preset-edit-inputs { display: flex; gap: 3px; margin-bottom: 4px; }
+    .preset-edit-inputs input { font-size: 0.75rem; padding: 2px 4px; border: 1px solid #ccc; border-radius: 3px; }
+    .preset-edit-num { width: 35px; text-align: center; }
+    .preset-edit-exp { flex: 1; min-width: 0; }
+    .preset-title { font-size: 0.75rem; font-weight: bold; color: #2c3e50; word-break: break-all; }
     .empty-msg { font-size: 0.85rem; color: #999; text-align: center; padding: 20px 0; }
     .status-log { font-size: 0.8rem; color: #27ae60; font-weight: bold; margin-top: 5px; }
   </style>
@@ -157,7 +164,19 @@
 
       <div class="section">
         <h3>저장된 표정 프리셋 목록 <span id="presetCount" class="badge">0개</span></h3>
-        <p style="font-size:0.75rem; color:#888; margin-bottom:5px;">* ◀ / ▶ 버튼으로 순서를 변경하거나 💾 버튼으로 개별 저장할 수 있습니다.</p>
+        
+        <!-- 썸네일 크롭 범위 설정 영역 -->
+        <div class="crop-config-box">
+          <label>🖼️ 프리셋 썸네일 표시 범위 지정 (px)</label>
+          <div class="input-group" style="margin-bottom:0;">
+            <input type="number" id="cropX" placeholder="시작 X (0)" value="0">
+            <input type="number" id="cropY" placeholder="시작 Y (0)" value="0">
+            <input type="number" id="cropW" placeholder="가로 (전체)">
+            <input type="number" id="cropH" placeholder="세로 (전체)">
+          </div>
+        </div>
+
+        <p style="font-size:0.75rem; color:#888; margin-bottom:5px;">* 프리셋 카드에서 숫자와 이름을 즉시 수정할 수 있습니다.</p>
         <div id="presetGrid" class="preset-grid">
           <div class="empty-msg">저장된 표정이 없습니다.<br>레이어를 선택 후 위 버튼을 눌러 저장하세요.</div>
         </div>
@@ -199,6 +218,10 @@
       const el = document.getElementById(id);
       el.value = localStorage.getItem(id) || el.value;
       el.addEventListener('input', () => localStorage.setItem(id, el.value));
+    });
+
+    ['cropX', 'cropY', 'cropW', 'cropH'].forEach(id => {
+      document.getElementById(id).addEventListener('input', renderPresetList);
     });
 
     function getGhConfig() {
@@ -357,6 +380,12 @@
           const importedSettings = JSON.parse(base64ToUtf8(settingsFile.content));
           if (importedSettings.prefixNum) document.getElementById('prefixNum').value = importedSettings.prefixNum;
           if (importedSettings.expressionName) document.getElementById('expressionName').value = importedSettings.expressionName;
+          if (importedSettings.thumbCrop) {
+            document.getElementById('cropX').value = importedSettings.thumbCrop.x || 0;
+            document.getElementById('cropY').value = importedSettings.thumbCrop.y || 0;
+            document.getElementById('cropW').value = importedSettings.thumbCrop.w || '';
+            document.getElementById('cropH').value = importedSettings.thumbCrop.h || '';
+          }
           state.savedPresets = importedSettings.savedPresets || [];
         }
 
@@ -411,6 +440,12 @@
         const exportData = {
           prefixNum: document.getElementById('prefixNum').value,
           expressionName: document.getElementById('expressionName').value,
+          thumbCrop: {
+            x: parseInt(document.getElementById('cropX').value) || 0,
+            y: parseInt(document.getElementById('cropY').value) || 0,
+            w: parseInt(document.getElementById('cropW').value) || 0,
+            h: parseInt(document.getElementById('cropH').value) || 0
+          },
           savedPresets: state.savedPresets
         };
         const jsonString = JSON.stringify(exportData, null, 2);
@@ -478,7 +513,10 @@
         const card = document.createElement('div');
         card.className = 'item-card';
         card.innerHTML = `<img src="${item.img.src}"><input type="text" value="${item.baseName}">`;
-        card.querySelector('input').addEventListener('input', (e) => state.bases[index].baseName = e.target.value);
+        card.querySelector('input').addEventListener('input', (e) => {
+          state.bases[index].baseName = e.target.value;
+          renderPresetList();
+        });
         container.appendChild(card);
       });
     }
@@ -517,11 +555,10 @@
       renderLayerList('layerDecoList', 'deco', true);
     }
 
-    // 현재 미리보기 이미지 개별 다운로드
     document.getElementById('downloadSingleBtn').addEventListener('click', () => {
       const num = document.getElementById('prefixNum').value.trim() || '01';
       const exp = document.getElementById('expressionName').value.trim() || 'expression';
-      const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : 'base';
+      const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : '베이스';
 
       const fileName = `${num}_${exp}_${activeBaseName}.png`;
       const link = document.createElement('a');
@@ -565,12 +602,11 @@
       renderPreview();
     }
 
-    // 특정 프리셋 개별 이미지 다운로드 함수
     function downloadPresetImage(preset, idx) {
       const tempCanvas = document.createElement('canvas');
       const tempCtx = tempCanvas.getContext('2d');
       const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
-      const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : 'base';
+      const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : '베이스';
 
       drawLayersToCanvas(tempCanvas, tempCtx, activeBase, preset.layers);
       
@@ -591,12 +627,36 @@
         return;
       }
 
-      const tempCanvas = document.createElement('canvas');
-      const tempCtx = tempCanvas.getContext('2d');
+      const fullCanvas = document.createElement('canvas');
+      const fullCtx = fullCanvas.getContext('2d');
       const activeBase = state.bases.length > 0 ? state.bases[0].img : null;
+      const activeBaseName = state.bases.length > 0 ? state.bases[0].baseName : '베이스';
+
+      // 썸네일 잘라내기 범위 파라미터 계산
+      const cx = parseInt(document.getElementById('cropX').value) || 0;
+      const cy = parseInt(document.getElementById('cropY').value) || 0;
 
       state.savedPresets.forEach((preset, idx) => {
-        drawLayersToCanvas(tempCanvas, tempCtx, activeBase, preset.layers);
+        // 1. 전체 합성 이미지 생성
+        drawLayersToCanvas(fullCanvas, fullCtx, activeBase, preset.layers);
+
+        const fullW = fullCanvas.width || 400;
+        const fullH = fullCanvas.height || 400;
+        const cw = parseInt(document.getElementById('cropW').value) || fullW;
+        const ch = parseInt(document.getElementById('cropH').value) || fullH;
+
+        // 2. 썸네일 전용 크롭 캔버스에 영역만큼 잘라내어 그리기
+        const thumbCanvas = document.createElement('canvas');
+        thumbCanvas.width = cw;
+        thumbCanvas.height = ch;
+        const thumbCtx = thumbCanvas.getContext('2d');
+
+        thumbCtx.drawImage(
+          fullCanvas,
+          cx, cy, cw, ch,
+          0, 0, cw, ch
+        );
+
         const card = document.createElement('div');
         card.className = 'preset-card';
         card.innerHTML = `
@@ -610,17 +670,39 @@
               <button class="btn-card btn-del" title="삭제">&times;</button>
             </div>
           </div>
-          <img class="preset-thumb" src="${tempCanvas.toDataURL()}">
-          <div class="preset-title">${preset.number}_${preset.expressionName}</div>
+          <img class="preset-thumb" src="${thumbCanvas.toDataURL()}">
+          
+          <!-- 카드에서 숫자/표정이름 실시간 직접 수정 -->
+          <div class="preset-edit-inputs">
+            <input type="text" class="preset-edit-num" value="${preset.number}" title="숫자 수정">
+            <input type="text" class="preset-edit-exp" value="${preset.expressionName}" title="표정 이름 수정">
+          </div>
+          
+          <!-- 숫자_표정(베이스) 형식 명시 -->
+          <div class="preset-title">${preset.number}_${preset.expressionName}(${activeBaseName})</div>
         `;
 
-        // 프리셋 카드 클릭 시 UI 설정 복원
+        // 카드 클릭 시 적용
         card.addEventListener('click', (e) => {
-          if (e.target.tagName === 'BUTTON') return;
+          if (e.target.tagName === 'BUTTON' || e.target.tagName === 'INPUT') return;
           applyPresetToUI(preset);
         });
 
-        // 순서 변경: 왼쪽 이동
+        // 숫자 직접 수정 시 이벤트
+        const numInput = card.querySelector('.preset-edit-num');
+        const expInput = card.querySelector('.preset-edit-exp');
+        const titleDiv = card.querySelector('.preset-title');
+
+        const updatePresetInfo = () => {
+          preset.number = numInput.value.trim() || '00';
+          preset.expressionName = expInput.value.trim() || 'expression';
+          titleDiv.textContent = `${preset.number}_${preset.expressionName}(${activeBaseName})`;
+        };
+
+        numInput.addEventListener('input', updatePresetInfo);
+        expInput.addEventListener('input', updatePresetInfo);
+
+        // 순서 변경: 왼쪽
         card.querySelector('.btn-left').addEventListener('click', (e) => {
           e.stopPropagation();
           if (idx > 0) {
@@ -631,7 +713,7 @@
           }
         });
 
-        // 순서 변경: 오른쪽 이동
+        // 순서 변경: 오른쪽
         card.querySelector('.btn-right').addEventListener('click', (e) => {
           e.stopPropagation();
           if (idx < state.savedPresets.length - 1) {
@@ -642,13 +724,13 @@
           }
         });
 
-        // 개별 프리셋 이미지 다운로드
+        // 개별 다운로드
         card.querySelector('.btn-preset-dl').addEventListener('click', (e) => {
           e.stopPropagation();
           downloadPresetImage(preset, idx);
         });
 
-        // 프리셋 삭제
+        // 삭제
         card.querySelector('.btn-del').addEventListener('click', (e) => {
           e.stopPropagation();
           state.savedPresets.splice(idx, 1);
